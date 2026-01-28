@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apache Tomcat自動化背景執行手冊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .code-block {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            position: relative;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #334155;
+            color: #94a3b8;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #475569;
+        }
+
+        .copy-btn:hover {
+            background-color: #475569;
+            color: #fff;
+        }
+
+        .step-number {
+            background-color: #475569; 
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: bold;
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        h2 {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="py-10 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl overflow-hidden">
+        
+        <!-- Header -->
+        <div class="bg-slate-600 px-8 py-10 text-white">
+            <h1 class="text-3xl font-bold mb-2">Apache Tomcat自動化背景執行手冊</h1>
+            <p class="text-slate-100">此份手冊以春生藥局MRP串LINE@為示範，實際各環境路徑、Service Name等等請視狀況修改。</p>
+            <div class="mt-6 flex flex-wrap gap-4 text-sm text-slate-200">
+                <span class="bg-slate-700 px-3 py-1 rounded-full">最後更新：2026/01/28</span>
+            </div>
+        </div>
+
+        <div class="p-8 space-y-12">
+
+            <!-- Environment Info -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">環境配置資訊</h2>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                    <p class="text-sm text-yellow-800 font-semibold mb-2">請確認本機環境符合以下設定：</p>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li><strong>Tomcat 路徑：</strong> <code class="bg-yellow-100 px-1 rounded text-red-600">D:\apache-tomcat-9.0.86</code></li>
+                        <li><strong>服務名稱 (Service Name)：</strong> <code class="bg-yellow-100 px-1 rounded text-red-600">chunshengTomcat</code></li>
+                        <li><strong>核心執行檔：</strong> <code class="bg-gray-100 px-1 rounded">tomcat9.exe</code></li>
+                        <li><strong>管理介面檔：</strong> <code class="bg-gray-100 px-1 rounded">chunshengTomcatw.exe</code> (原名 tomcat9w.exe)</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Phase 1 -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <span class="step-number">1</span> 第一階段：前置作業與安裝
+                </h2>
+                <div class="space-y-6 ml-10">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-700 mb-2">1.1 補齊系統檔案</h3>
+                        <p class="text-gray-600 mb-2">若使用 Core 版 Zip，<code class="text-sm bg-gray-100 px-1">bin</code> 資料夾可能缺少 Windows 服務檔案。請確認資料夾內包含：</p>
+                        <ul class="list-disc list-inside text-gray-600 ml-4 mb-2 text-sm">
+                            <li>service.bat</li>
+                            <li>tomcat9.exe</li>
+                            <li class="mb-1">tomcat9w.exe (請手動改名為 <strong>chunshengTomcatw.exe</strong>)</li>
+                            <li class="list-none ml-[-1rem]">
+                                <!-- 調整為 text-sm 並增加 padding 以與 1.2 一致 -->
+                                <span class="bg-blue-50 text-blue-800 px-3 py-2 rounded text-sm block mt-2 border border-blue-200">
+                                    <strong>※ 改名原因：</strong> 此管理工具只會開啟與「自己檔名相同」的服務。例如檔名是 <code>chunshengTomcatw.exe</code>，開啟時就會去管理 <code>chunshengTomcat</code> 服務。
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-700 mb-2">1.2 安裝 Windows 服務</h3>
+                        <p class="text-gray-600 mb-2">以「系統管理員身分」開啟 CMD，執行以下指令：</p>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyToClipboard(this)">複製</button>
+<pre>cd /d "D:\apache-tomcat-9.0.86\bin"
+service.bat install chunshengTomcat</pre>
+                        </div>
+                        <div class="bg-blue-50 text-blue-800 px-3 py-2 rounded text-sm mt-2 border border-blue-200">
+                            <strong>※ 命名說明：</strong> 指令中的 <code>chunshengTomcat</code> 是您自訂的服務名稱 (Service Name)。您可視專案需求修改，但請務必確認後續所有腳本 (如 restart, config) 中的名稱都要與此保持一致。
+                        </div>
+                        <p class="text-sm text-green-600 mt-2">✓ 成功訊號：看見 "The service 'chunshengTomcat' has been installed."</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phase 2 -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <span class="step-number">2</span> 第二階段：建立桌面維運腳本
+                </h2>
+                <p class="ml-10 text-gray-600 mb-6">請在桌面建立以下三個 <code class="text-sm bg-gray-100 px-1">.bat</code> 檔案。腳本皆已內建<strong>「要求以系統管理員身分執行」</strong>功能，直接雙擊即可執行。</p>
+
+                <div class="ml-10 grid gap-8">
+                    
+                    <!-- Script A -->
+                    <div class="border rounded-lg p-5 bg-gray-50">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-lg text-slate-700">A. TomcatRestart.bat (日常重啟)</h3>
+                            <span class="text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded">建議捷徑圖示：藍/綠色</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">用途：正常停止並重啟服務，適用於更新程式或網站變慢時。</p>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyToClipboard(this)">複製</button>
+<pre>@echo off
+:: [要求以系統管理員身分執行]
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' NEQ '0' (
+    echo 正在請求管理員權限...
+    goto UACPrompt
+) else ( goto gotAdmin )
+:UACPrompt
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    del "%temp%\getadmin.vbs"
+    exit /B
+:gotAdmin
+    pushd "%CD%"
+    CD /D "%~dp0"
+
+echo 正在停止 chunshengTomcat 服務...
+net stop chunshengTomcat
+echo 等待 3 秒...
+timeout /t 3 /nobreak >nul
+echo 正在啟動 chunshengTomcat 服務...
+net start chunshengTomcat
+echo 服務重啟完成。
+timeout /t 2 /nobreak >nul
+exit</pre>
+                        </div>
+                    </div>
+
+                    <!-- Script B -->
+                    <div class="border rounded-lg p-5 bg-red-50 border-red-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-lg text-red-700">B. ForceRestart.bat (緊急救援)</h3>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">建議捷徑圖示：紅色警示</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">用途：當服務卡死、無法停止時，強制殺除程序並重啟。</p>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyToClipboard(this)">複製</button>
+<pre>@echo off
+:: [要求以系統管理員身分執行]
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' NEQ '0' (
+    echo 正在請求管理員權限...
+    goto UACPrompt
+) else ( goto gotAdmin )
+:UACPrompt
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    del "%temp%\getadmin.vbs"
+    exit /B
+:gotAdmin
+    pushd "%CD%"
+    CD /D "%~dp0"
+
+echo ==========================================
+echo    緊急救援模式：強制重啟 chunshengTomcat
+echo ==========================================
+echo 1. 正在強制終止 Tomcat 核心程序...
+taskkill /F /IM tomcat9.exe
+echo 等待 3 秒...
+timeout /t 3 /nobreak >nul
+echo 2. 正在啟動 chunshengTomcat 服務...
+net start chunshengTomcat
+echo 重啟完成。
+timeout /t 3 /nobreak >nul
+exit</pre>
+                        </div>
+                    </div>
+
+                    <!-- Script C -->
+                    <div class="border rounded-lg p-5 bg-gray-50">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-lg text-gray-700">C. ConfigTomcat.bat (設定介面)</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">用途：開啟圖形化介面，調整 Java 記憶體或啟動參數。</p>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyToClipboard(this)">複製</button>
+<pre>@echo off
+:: [要求以系統管理員身分執行]
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' NEQ '0' (
+    echo 正在請求管理員權限...
+    goto UACPrompt
+) else ( goto gotAdmin )
+:UACPrompt
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    del "%temp%\getadmin.vbs"
+    exit /B
+:gotAdmin
+    pushd "%CD%"
+    CD /D "%~dp0"
+
+echo 正在開啟設定介面...
+cd /d "D:\apache-tomcat-9.0.86\bin"
+start chunshengTomcatw.exe //ES//chunshengTomcat
+exit</pre>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Phase 3 -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <span class="step-number">3</span> 第三階段：設定自動重啟排程
+                </h2>
+                <div class="ml-10">
+                    <p class="text-gray-600 mb-4">請建立一個一次性的設定腳本 <code class="text-sm bg-gray-100 px-1">SetupAutoRestart.bat</code> 並執行。執行完畢後即可刪除此檔案。</p>
+                    <div class="bg-indigo-50 border-l-4 border-indigo-400 p-4 mb-4">
+                        <p class="text-sm text-indigo-800">
+                            <strong>排程設定：</strong> 每日凌晨 04:00 自動執行重啟。<br>
+                            <strong>日誌路徑：</strong> <code>bin\restart_log.txt</code>
+                        </p>
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyToClipboard(this)">複製</button>
+<pre>@echo off
+:: [要求以系統管理員身分執行]
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+if '%errorlevel%' NEQ '0' (
+    goto UACPrompt
+) else ( goto gotAdmin )
+:UACPrompt
+    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
+    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
+    "%temp%\getadmin.vbs"
+    del "%temp%\getadmin.vbs"
+    exit /B
+:gotAdmin
+    pushd "%CD%"
+    CD /D "%~dp0"
+
+set TARGET_DIR=D:\apache-tomcat-9.0.86\bin
+set RESTART_SCRIPT=%TARGET_DIR%\DailyRestart.bat
+
+:: 建立 bin 資料夾內的重啟腳本
+(
+echo @echo off
+echo echo [Auto-Restart] %%date%% %%time%% 正在執行排程重啟... ^>^> "%TARGET_DIR%\restart_log.txt"
+echo net stop chunshengTomcat
+echo timeout /t 5 /nobreak ^>nul
+echo taskkill /F /IM tomcat9.exe ^>nul 2^>^&1
+echo timeout /t 3 /nobreak ^>nul
+echo net start chunshengTomcat
+echo echo [Auto-Restart] 重啟完成 ^>^> "%TARGET_DIR%\restart_log.txt"
+) > "%RESTART_SCRIPT%"
+
+:: 註冊 Windows 排程 (每日 04:00)
+schtasks /create /tn "TomcatDailyRestart" /tr "'%RESTART_SCRIPT%'" /sc daily /st 04:00 /ru SYSTEM /rl HIGHEST /f
+echo 設定完成。
+pause</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 border-t pt-8">常見問題排除 (Troubleshooting)</h2>
+                <div class="overflow-hidden border rounded-lg shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">問題現象</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">檢查方式</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">解決方案</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200 text-sm">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-red-600">網頁無法開啟</td>
+                                <td class="px-6 py-4 text-gray-600">瀏覽器無法連線至 localhost:8080</td>
+                                <td class="px-6 py-4 text-gray-600">使用 <strong>TomcatRestart.bat</strong> 重啟服務。</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-red-600">重啟腳本卡住</td>
+                                <td class="px-6 py-4 text-gray-600">視窗停在「正在停止服務...」很久</td>
+                                <td class="px-6 py-4 text-gray-600">關閉視窗，改用 <strong>ForceRestart.bat</strong> 強制重啟。</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-red-600">Config 介面打不開</td>
+                                <td class="px-6 py-4 text-gray-600">執行 ConfigTomcat.bat 沒反應</td>
+                                <td class="px-6 py-4 text-gray-600">檢查 bin 資料夾內是否有 <code>chunshengTomcatw.exe</code> (需改名)。</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-red-600">服務自動停止</td>
+                                <td class="px-6 py-4 text-gray-600">檢查 <code>logs\commons-daemon.log</code></td>
+                                <td class="px-6 py-4 text-gray-600">通常是 Java 記憶體不足，請用 Config 介面調大 Memory Pool。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+        
+        <div class="bg-gray-800 text-gray-400 py-6 px-8 text-center text-sm">
+            2026 James Peng 製作, 僅供專業技術人員閱讀
+        </div>
+
+    </div>
+
+    <script>
+        function copyToClipboard(button) {
+            const pre = button.nextElementSibling;
+            const text = pre.innerText;
+            
+            // Create temporary textarea to copy text
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                const originalText = button.innerText;
+                button.innerText = '已複製！';
+                button.classList.add('bg-green-600', 'text-white', 'border-green-700');
+                
+                setTimeout(() => {
+                    button.innerText = originalText;
+                    button.classList.remove('bg-green-600', 'text-white', 'border-green-700');
+                }, 2000);
+            } catch (err) {
+                console.error('複製失敗', err);
+                button.innerText = '失敗';
+            }
+            
+            document.body.removeChild(textarea);
+        }
+    </script>
+</body>
+</html>
